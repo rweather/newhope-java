@@ -9,10 +9,10 @@ reference C code from [here](https://cryptojedi.org/crypto/#newhope),
 There are two classes in the org.pqcrypto.newhope package:
 
  * NewHope - Main API for the Java implementation of NewHope.
- * NewHopeTests - Some test cases to verify the implementation.
+ * NewHopeTest - Some test cases to verify the implementation.
 
 Only the NewHope class needs to be imported into a user application.
-The NewHopeTests class is not needed except for verification.
+The NewHopeTest class is not needed except for verification.
 
 ## Using the Java Port
 
@@ -39,7 +39,7 @@ The 0 values in the code above are offsets into the respective arrays
 in case you need to write the key values to somewhere else in the
 caller-supplied buffers.
 
-The NewHopeTests class provides some more examples.
+The NewHopeTest class provides some more examples.
 
 ## Random Number Generation
 
@@ -47,7 +47,7 @@ The NewHope class uses the Java standard SecureRandom class to generate
 random numbers.  If this isn't good enough, then the randombytes() method
 can be overridden in a subclass to provide an alternative source of
 random numbers.  This can also be used to provide a static source of
-random numbers for test vectors (as is done in NewHopeTests).
+random numbers for test vectors (as is done in NewHopeTest).
 
 ## License
 
