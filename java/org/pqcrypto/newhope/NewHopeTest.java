@@ -22,6 +22,9 @@ public class NewHopeTest extends NewHope {
 	
 	// -------------- testvectors.c --------------
 	
+	/* Deterministic randombytes by Daniel J. Bernstein */
+	/* taken from SUPERCOP (https://bench.cr.yp.to)     */
+
 	private static int[] seed = { 3,1,4,1,5,9,2,6,5,3,5,8,9,7,9,3,2,3,8,4,6,2,6,4,3,3,8,3,2,7,9,5 } ;
 	private static int[] in = new int [12];
 	private static int[] out = new int [8];
@@ -65,8 +68,10 @@ public class NewHopeTest extends NewHope {
 
 	// Overrides the base class to provide static test data.
 	@Override
-	protected void randombytes(byte[] buffer, int offset, int size)
+	protected void randombytes(byte[] buffer)
 	{
+		int offset = 0;
+		int size = buffer.length;
 		while (size > 0) {
 			if (outleft == 0) {
 				if ((++in[0]) == 0) {
@@ -140,6 +145,16 @@ public class NewHopeTest extends NewHope {
 		System.out.println();
 	}
 
+	private static void printHex(int[] value)
+	{
+		String hexchars = "0123456789abcdef";
+		for (int i = 0; i < value.length; ++i) {
+			System.out.print(hexchars.charAt((value[i] >> 4) & 0x0f));
+			System.out.print(hexchars.charAt(value[i] & 0x0f));
+		}
+		System.out.println();
+	}
+
 	private static void test_vectors()
 	{
 		byte[] key_a = new byte [NewHope.SHAREDBYTES];
@@ -151,6 +166,8 @@ public class NewHopeTest extends NewHope {
 		NewHope bob = new NewHopeTest();
 
 		for (int i = 0; i < NTESTS; ++i) {
+			printHex(seed);
+
 			alice.keygen(senda, 0);
 			printHex(senda);
 			

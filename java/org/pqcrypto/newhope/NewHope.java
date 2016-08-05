@@ -95,7 +95,8 @@ public class NewHope {
 	  byte[] noiseseed = new byte [32];
 
 	  try {
-		  randombytes(seed, 0, SEEDBYTES + 32);
+		  randombytes(seed);
+		  sha3256(seed, 0, seed, 0, SEEDBYTES); /* Don't send output of system RNG */
 		  System.arraycopy(seed, SEEDBYTES, noiseseed, 0, 32);
 	
 		  a.uniform(seed);
@@ -160,7 +161,7 @@ public class NewHope {
 	  byte[] skey = new byte [32];
 
 	  try {
-		  randombytes(noiseseed, 0, 32);
+		  randombytes(noiseseed);
 	
 		  decode_a(pka, seed, received, receivedOffset);
 		  a.uniform(seed);
@@ -246,32 +247,14 @@ public class NewHope {
 	 * Generates random bytes for use in the NewHope implementation.
 	 * 
 	 * @param buffer The buffer to fill with random bytes.
-	 * @param offset Offset into the buffer of the first byte to fill.
-	 * @param size The number of bytes to generate, which must be between
-	 * zero and 64 bytes in size.
 	 * 
 	 * This function may be overridden in subclasses to provide a better
 	 * random number generator or to provide static data for test vectors.
 	 */
-	protected void randombytes(byte[] buffer, int offset, int size)
+	protected void randombytes(byte[] buffer)
 	{
-		// Range-check the size of the required output.
-		if (size < 0 || size > 64)
-			throw new IllegalArgumentException();
-		
-		// Get some random data from the operating system and hash it
-		// with ChaCha20 to scramble it a little more.
 		SecureRandom random = new SecureRandom();
-		byte[] seed = new byte [48];
-		byte[] output = new byte [64];
-		try {
-			random.nextBytes(seed);
-			crypto_core_chacha20(output, 0, seed, 32, seed);
-			System.arraycopy(output, 0, buffer, offset, size);
-		} finally {
-			Arrays.fill(seed, (byte)0);
-			Arrays.fill(output, (byte)0);
-		}
+		random.nextBytes(buffer);
 	}
 
 	private static void encode_a(byte[] r, int roffset, Poly pk, byte[] seed)
@@ -391,7 +374,7 @@ public class NewHope {
 		  int pos=0, ctr=0;
 		  int val;
 		  long[] state = new long [25];
-		  int nblocks=16;
+		  int nblocks=14;
 		  byte[] buf = new byte [SHAKE128_RATE*nblocks];
 
 		  try {
@@ -401,8 +384,8 @@ public class NewHope {
 	
 			  while(ctr < PARAM_N)
 			  {
-			    val = ((buf[pos] & 0xff) | ((buf[pos+1] & 0xff) << 8)) & 0x3fff; // Specialized for q = 12889
-			    if(val < PARAM_Q)
+			    val = ((buf[pos] & 0xff) | ((buf[pos+1] & 0xff) << 8));
+			    if(val < 5*PARAM_Q)
 			      coeffs[ctr++] = (char)val;
 			    pos += 2;
 			    if(pos > SHAKE128_RATE*nblocks-2)
@@ -644,7 +627,7 @@ public class NewHope {
 	
 	// -------------- ntt.c --------------
 
-	private static final char[/*1024*/] bitrev_table = {
+	private static final char[/*PARAM_N*/] bitrev_table = {
 		  0,512,256,768,128,640,384,896,64,576,320,832,192,704,448,960,32,544,288,800,160,672,416,928,96,608,352,864,224,736,480,992,
 		  16,528,272,784,144,656,400,912,80,592,336,848,208,720,464,976,48,560,304,816,176,688,432,944,112,624,368,880,240,752,496,1008,
 		  8,520,264,776,136,648,392,904,72,584,328,840,200,712,456,968,40,552,296,808,168,680,424,936,104,616,360,872,232,744,488,1000,
