@@ -87,6 +87,7 @@ public class NewHopeTest extends NewHope {
 			buffer[offset++] = (byte)out[--outleft];
 			--size;
 		}
+		printHexSplit(buffer, 32);
 	}
 
 	// -------------- test_newhope.c --------------
@@ -145,14 +146,15 @@ public class NewHopeTest extends NewHope {
 		System.out.println();
 	}
 
-	private static void printHex(int[] value)
+	private static void printHexSplit(byte[] value, int split)
 	{
 		String hexchars = "0123456789abcdef";
 		for (int i = 0; i < value.length; ++i) {
 			System.out.print(hexchars.charAt((value[i] >> 4) & 0x0f));
 			System.out.print(hexchars.charAt(value[i] & 0x0f));
+			if ((i % split) == (split - 1))
+				System.out.println();
 		}
-		System.out.println();
 	}
 
 	private static void test_vectors()
@@ -166,8 +168,6 @@ public class NewHopeTest extends NewHope {
 		NewHope bob = new NewHopeTest();
 
 		for (int i = 0; i < NTESTS; ++i) {
-			printHex(seed);
-
 			alice.keygen(senda, 0);
 			printHex(senda);
 			
