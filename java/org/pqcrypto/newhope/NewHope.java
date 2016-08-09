@@ -556,9 +556,8 @@ public class NewHope {
 
 	private static void helprec(Poly c, Poly v, byte[] seed, byte nonce)
 	{
-	  int[] v0 = new int [4];
-	  int[] v1 = new int [4];
-	  int[] v_tmp = new int [4];
+	  int[] v0 = new int [8];
+	  int v_tmp0,v_tmp1,v_tmp2,v_tmp3;
 	  int k;
 	  int rbit;
 	  byte[] rand = new byte [32];
@@ -576,27 +575,25 @@ public class NewHope {
 		  {
 		    rbit = (rand[i>>3] >> (i&7)) & 1;
 	
-		    k  = f(v0,0, v1,0, 8*v.coeffs[  0+i] + 4*rbit);
-		    k += f(v0,1, v1,1, 8*v.coeffs[256+i] + 4*rbit);
-		    k += f(v0,2, v1,2, 8*v.coeffs[512+i] + 4*rbit);
-		    k += f(v0,3, v1,3, 8*v.coeffs[768+i] + 4*rbit);
+		    k  = f(v0,0, v0,4, 8*v.coeffs[  0+i] + 4*rbit);
+		    k += f(v0,1, v0,5, 8*v.coeffs[256+i] + 4*rbit);
+		    k += f(v0,2, v0,6, 8*v.coeffs[512+i] + 4*rbit);
+		    k += f(v0,3, v0,7, 8*v.coeffs[768+i] + 4*rbit);
 	
 		    k = (2*PARAM_Q-1-k) >> 31;
 	
-		    v_tmp[0] = ((~k) & v0[0]) ^ (k & v1[0]);
-		    v_tmp[1] = ((~k) & v0[1]) ^ (k & v1[1]);
-		    v_tmp[2] = ((~k) & v0[2]) ^ (k & v1[2]);
-		    v_tmp[3] = ((~k) & v0[3]) ^ (k & v1[3]);
+		    v_tmp0 = ((~k) & v0[0]) ^ (k & v0[4]);
+		    v_tmp1 = ((~k) & v0[1]) ^ (k & v0[5]);
+		    v_tmp2 = ((~k) & v0[2]) ^ (k & v0[6]);
+		    v_tmp3 = ((~k) & v0[3]) ^ (k & v0[7]);
 	
-		    c.coeffs[  0+i] = (char)((v_tmp[0] -   v_tmp[3]) & 3);
-		    c.coeffs[256+i] = (char)((v_tmp[1] -   v_tmp[3]) & 3);
-		    c.coeffs[512+i] = (char)((v_tmp[2] -   v_tmp[3]) & 3);
-		    c.coeffs[768+i] = (char)((   -k    + 2*v_tmp[3]) & 3);
+		    c.coeffs[  0+i] = (char)((v_tmp0 -   v_tmp3) & 3);
+		    c.coeffs[256+i] = (char)((v_tmp1 -   v_tmp3) & 3);
+		    c.coeffs[512+i] = (char)((v_tmp2 -   v_tmp3) & 3);
+		    c.coeffs[768+i] = (char)((   -k  + 2*v_tmp3) & 3);
 		  }
 	  } finally {
 		  Arrays.fill(v0, 0);
-		  Arrays.fill(v1, 0);
-		  Arrays.fill(v_tmp, 0);
 		  Arrays.fill(rand, (byte)0);
 		  Arrays.fill(n, (byte)0);
 	  }
@@ -605,23 +602,20 @@ public class NewHope {
 	private static void rec(byte[] key, Poly v, Poly c)
 	{
 	  int i;
-	  int[] tmp = new int [4];
+	  int tmp0,tmp1,tmp2,tmp3;
 
-	  try {
-		  for(i=0;i<32;i++)
-		    key[i] = 0;
-	
-		  for(i=0; i<256; i++)
-		  {
-		    tmp[0] = 16*PARAM_Q + 8*(int)v.coeffs[  0+i] - PARAM_Q * (2*c.coeffs[  0+i]+c.coeffs[768+i]);
-		    tmp[1] = 16*PARAM_Q + 8*(int)v.coeffs[256+i] - PARAM_Q * (2*c.coeffs[256+i]+c.coeffs[768+i]);
-		    tmp[2] = 16*PARAM_Q + 8*(int)v.coeffs[512+i] - PARAM_Q * (2*c.coeffs[512+i]+c.coeffs[768+i]);
-		    tmp[3] = 16*PARAM_Q + 8*(int)v.coeffs[768+i] - PARAM_Q * (                  c.coeffs[768+i]);
-	
-		    key[i>>3] |= LDDecode(tmp[0], tmp[1], tmp[2], tmp[3]) << (i & 7);
-		  }
-	  } finally {
-		  Arrays.fill(tmp, 0);
+	  for(i=0;i<32;i++)
+	    key[i] = 0;
+
+	  for(i=0; i<256; i++)
+	  {
+		char c768 = c.coeffs[768+i];
+	    tmp0 = 16*PARAM_Q + 8*(int)v.coeffs[  0+i] - PARAM_Q * (2*c.coeffs[  0+i]+c768);
+	    tmp1 = 16*PARAM_Q + 8*(int)v.coeffs[256+i] - PARAM_Q * (2*c.coeffs[256+i]+c768);
+	    tmp2 = 16*PARAM_Q + 8*(int)v.coeffs[512+i] - PARAM_Q * (2*c.coeffs[512+i]+c768);
+	    tmp3 = 16*PARAM_Q + 8*(int)v.coeffs[768+i] - PARAM_Q * (                  c768);
+
+	    key[i>>3] |= LDDecode(tmp0, tmp1, tmp2, tmp3) << (i & 7);
 	  }
 	}
 	
