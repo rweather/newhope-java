@@ -404,9 +404,9 @@ public class NewHope {
 		public void getnoise(byte[] seed, byte nonce)
 		{
 		  byte[] buf = new byte [4*PARAM_N];
-		  int t, d, a, b;
+		  int /*t, d,*/ a, b;
 		  byte[] n = new byte [8];
-		  int i,j;
+		  int i/*,j*/;
 
 		  try {
 			  for(i=1;i<8;i++)
@@ -417,13 +417,36 @@ public class NewHope {
 	
 			  for(i=0;i<PARAM_N;i++)
 			  {
+				/*
+				The original C reference code:
+				
 			    t = (buf[4*i] & 0xff) | (((buf[4*i+1]) & 0xff) << 8) | (((buf[4*i+2]) & 0xff) << 16) | (((buf[4*i+3]) & 0xff) << 24);
 			    d = 0;
 			    for(j=0;j<8;j++)
 			      d += (t >>> j) & 0x01010101;
 			    a = ((d >>> 8) & 0xff) + (d & 0xff);
 			    b = (d >>> 24) + ((d >>> 16) & 0xff);
-			    coeffs[i] = (char)(a + PARAM_Q - b);
+			    
+			    What the above is doing is reading 32-bit words from buf and then
+			    setting a and b to the number of 1 bits in the low and high 16 bits.
+			    We instead use the following technique from "Bit Twiddling Hacks",
+			    modified for 16-bit quantities:
+			    
+			    https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+			    */
+				a = (buf[4*i] & 0xff) | (((buf[4*i+1]) & 0xff) << 8);
+				a = a - ((a >> 1) & 0x5555);
+				a = (a & 0x3333) + ((a >> 2) & 0x3333);
+				a = ((a >> 4) + a) & 0x0F0F;
+				a = ((a >> 8) + a) & 0x00FF;
+
+				b = (buf[4*i+2] & 0xff) | (((buf[4*i+3]) & 0xff) << 8);
+				b = b - ((b >> 1) & 0x5555);
+				b = (b & 0x3333) + ((b >> 2) & 0x3333);
+				b = ((b >> 4) + b) & 0x0F0F;
+				b = ((b >> 8) + b) & 0x00FF;
+
+				coeffs[i] = (char)(a + PARAM_Q - b);
 			  }
 		  } finally {
 			  Arrays.fill(buf, (byte)0);
