@@ -405,15 +405,10 @@ public class NewHope {
 		{
 		  byte[] buf = new byte [4*PARAM_N];
 		  int /*t, d,*/ a, b;
-		  byte[] n = new byte [8];
 		  int i/*,j*/;
 
 		  try {
-			  for(i=1;i<8;i++)
-			    n[i] = 0;
-			  n[0] = nonce;
-	
-			  crypto_stream_chacha20(buf,0,4*PARAM_N,n,seed);
+			  crypto_stream_chacha20(buf,0,4*PARAM_N,nonce,seed);
 	
 			  for(i=0;i<PARAM_N;i++)
 			  {
@@ -450,7 +445,6 @@ public class NewHope {
 			  }
 		  } finally {
 			  Arrays.fill(buf, (byte)0);
-			  Arrays.fill(n, (byte)0);
 		  }
 		}
 		
@@ -584,15 +578,10 @@ public class NewHope {
 	  int k;
 	  int rbit;
 	  byte[] rand = new byte [32];
-	  byte[] n = new byte [8];
 	  int i;
 
 	  try {
-		  for(i=0;i<7;i++)
-		    n[i] = 0;
-		  n[7] = nonce;
-	
-		  crypto_stream_chacha20(rand,0,32,n,seed);
+		  crypto_stream_chacha20(rand,0,32,((long)nonce) << 56,seed);
 	
 		  for(i=0; i<256; i++)
 		  {
@@ -618,7 +607,6 @@ public class NewHope {
 	  } finally {
 		  Arrays.fill(v0, 0);
 		  Arrays.fill(rand, (byte)0);
-		  Arrays.fill(n, (byte)0);
 	  }
 	}
 
@@ -1212,7 +1200,10 @@ public class NewHope {
 	  x[offset + 3] = (byte)u;
 	}
 	
-	private static void crypto_core_chacha20(byte[] out, int outOffset, byte[] in, int inOffset, byte[] k)
+	// Note: This version is limited to a maximum of 2^32 blocks or 2^38 bytes
+	// because the block number counter is 32-bit instead of 64-bit.  This isn't
+	// a problem for New Hope because the maximum required output is 4096 bytes.
+	private static void crypto_core_chacha20(byte[] out, int outOffset, long nonce, int blknum, byte[] k)
 	{
 	  int x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15;
 	  int j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15;
@@ -1230,10 +1221,10 @@ public class NewHope {
 	  j9  = x9  = load_littleendian(k, 20);
 	  j10 = x10 = load_littleendian(k, 24);
 	  j11 = x11 = load_littleendian(k, 28);
-	  j12 = x12 = load_littleendian(in,inOffset+ 8);
-	  j13 = x13 = load_littleendian(in,inOffset+12);
-	  j14 = x14 = load_littleendian(in,inOffset+ 0);
-	  j15 = x15 = load_littleendian(in,inOffset+ 4);
+	  j12 = x12 = blknum;
+	  j13 = x13 = 0;
+	  j14 = x14 = (int)nonce;
+	  j15 = x15 = (int)(nonce >>> 32);
 
 	  for (i = 20;i > 0;i -= 2) {
 		  x0  += x4 ; x12 ^= x0 ; x12 = (x12 << 16) | (x12 >>> 16);
@@ -1305,40 +1296,27 @@ public class NewHope {
 	  store_littleendian(out, outOffset + 60,x15);
 	}
 
-	private static void crypto_stream_chacha20(byte[] c, int coffset, int clen, byte[] n, byte[] k)
+	private static void crypto_stream_chacha20(byte[] c, int coffset, int clen, long n, byte[] k)
 	{
-	  byte[] in = new byte [16];
-	  byte[] block = new byte [64];
-	  int i;
-	  int u;
+	  int blknum = 0;
 
 	  if (clen <= 0) return;
 
-	  try {
-		  for (i = 0;i < 8;++i) in[i] = n[i];
-		  for (i = 8;i < 16;++i) in[i] = 0;
-	
-		  while (clen >= 64) {
-		    crypto_core_chacha20(c,coffset,in,0,k);
-	
-		    u = 1;
-		    for (i = 8;i < 16;++i) {
-		      u += (in[i]&0xff);
-		      in[i] = (byte)u;
-		      u >>= 8;
-		    }
-	
-		    clen -= 64;
-		    coffset += 64;
-		  }
-	
-		  if (clen != 0) {
-		    crypto_core_chacha20(block,0,in,0,k);
-		    for (i = 0;i < clen;++i) c[coffset+i] = block[i];
-		  }
-	  } finally {
-		  Arrays.fill(in, (byte)0);
-		  Arrays.fill(block, (byte)0);
+	  while (clen >= 64) {
+	    crypto_core_chacha20(c,coffset,n,blknum,k);
+	    ++blknum;
+	    clen -= 64;
+	    coffset += 64;
+	  }
+
+	  if (clen != 0) {
+		byte[] block = new byte [64];
+		try {
+		    crypto_core_chacha20(block,0,n,blknum,k);
+		    for (int i = 0;i < clen;++i) c[coffset+i] = block[i];
+		} finally {
+			Arrays.fill(block, (byte)0);
+		}
 	  }
 	}
 
