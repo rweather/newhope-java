@@ -13,16 +13,21 @@ import java.util.Arrays;
 
 /**
  * NewHope key exchange algorithm.
+ * 
+ * This class implements the standard "ref" version of the New Hope
+ * algorithm.
+ * 
+ * @see NewHopeTor
  */
 public class NewHope {
 
 	// -------------- params.h --------------
 	
-	private static final int PARAM_N = 1024;
-	private static final int PARAM_Q = 12289;
-	private static final int POLY_BYTES = 1792;
-	private static final int SEEDBYTES = 32;
-	private static final int RECBYTES = 256;
+	static final int PARAM_N = 1024;
+	static final int PARAM_Q = 12289;
+	static final int POLY_BYTES = 1792;
+	static final int SEEDBYTES = 32;
+	static final int RECBYTES = 256;
 
 	/**
 	 * Number of bytes in the public key value sent by Alice.
@@ -99,7 +104,7 @@ public class NewHope {
 		  sha3256(seed, 0, seed, 0, SEEDBYTES); /* Don't send output of system RNG */
 		  System.arraycopy(seed, SEEDBYTES, noiseseed, 0, 32);
 	
-		  a.uniform(seed);
+		  uniform(a.coeffs, seed);
 	
 		  if (sk == null)
 			  sk = new Poly();
@@ -164,7 +169,7 @@ public class NewHope {
 		  randombytes(noiseseed);
 	
 		  decode_a(pka, seed, received, receivedOffset);
-		  a.uniform(seed);
+		  uniform(a.coeffs, seed);
 	
 		  sp.getnoise(noiseseed,(byte)0);
 		  sp.ntt();
@@ -369,38 +374,6 @@ public class NewHope {
 			}
 		}
 
-		public void uniform(byte[] seed)
-		{
-		  int pos=0, ctr=0;
-		  int val;
-		  long[] state = new long [25];
-		  int nblocks=14;
-		  byte[] buf = new byte [SHAKE128_RATE*nblocks];
-
-		  try {
-			  shake128_absorb(state, seed, 0, SEEDBYTES);
-	
-			  shake128_squeezeblocks(buf, 0, nblocks, state);
-	
-			  while(ctr < PARAM_N)
-			  {
-			    val = ((buf[pos] & 0xff) | ((buf[pos+1] & 0xff) << 8));
-			    if(val < 5*PARAM_Q)
-			      coeffs[ctr++] = (char)val;
-			    pos += 2;
-			    if(pos > SHAKE128_RATE*nblocks-2)
-			    {
-			      nblocks=1;
-			      shake128_squeezeblocks(buf,0,nblocks,state);
-			      pos = 0;
-			    }
-			  }
-		  } finally {
-			  Arrays.fill(state, 0);
-			  Arrays.fill(buf, (byte)0);
-		  }
-		}
-
 		public void getnoise(byte[] seed, byte nonce)
 		{
 		  byte[] buf = new byte [4*PARAM_N];
@@ -478,6 +451,55 @@ public class NewHope {
 		  ntt_global(coeffs, omegas_inv_montgomery);
 		  mul_coefficients(coeffs, psis_inv_montgomery);
 		}
+	}
+
+	/**
+	 * Derives the public "a" value from a 32-byte seed.
+	 *  
+	 * @param coeffs The 1024 16-bit coefficients of "a" on exit.
+	 * @param seed The 32-byte seed to use to generate "a".
+	 * 
+	 * The base class implementation is not constant-time but usually
+	 * this doesn't matter for the public "a" value.  However, as
+	 * described in the New Hope paper, non constant-time generation
+	 * of "a" can be a problem in anonymity networks like Tor.
+	 * 
+	 * This function can be overridden in subclasses to provide a
+	 * different method for generating "a".  The NewHopeTor class
+	 * provides such an example.
+	 * 
+	 * Reference: https://cryptojedi.org/papers/newhope-20160803.pdf
+	 */
+	protected void uniform(char[] coeffs, byte[] seed)
+	{
+	  int pos=0, ctr=0;
+	  int val;
+	  long[] state = new long [25];
+	  int nblocks=14;
+	  byte[] buf = new byte [SHAKE128_RATE*nblocks];
+
+	  try {
+		  shake128_absorb(state, seed, 0, SEEDBYTES);
+
+		  shake128_squeezeblocks(buf, 0, nblocks, state);
+
+		  while(ctr < PARAM_N)
+		  {
+		    val = ((buf[pos] & 0xff) | ((buf[pos+1] & 0xff) << 8));
+		    if(val < 5*PARAM_Q)
+		      coeffs[ctr++] = (char)val;
+		    pos += 2;
+		    if(pos > SHAKE128_RATE*nblocks-2)
+		    {
+		      nblocks=1;
+		      shake128_squeezeblocks(buf,0,nblocks,state);
+		      pos = 0;
+		    }
+		  }
+	  } finally {
+		  Arrays.fill(state, 0);
+		  Arrays.fill(buf, (byte)0);
+	  }
 	}
 
 	// -------------- reduce.c --------------
@@ -1146,14 +1168,14 @@ public class NewHope {
 	  }
 	}
 
-	private static final int SHAKE128_RATE = 168;
+	static final int SHAKE128_RATE = 168;
 	
-	private static void shake128_absorb(long[] s, byte[] input, int inputOffset, int inputByteLen)
+	static void shake128_absorb(long[] s, byte[] input, int inputOffset, int inputByteLen)
 	{
 	  keccak_absorb(s, SHAKE128_RATE, input, inputOffset, inputByteLen, (byte)0x1F);
 	}
 
-	private static void shake128_squeezeblocks(byte[] output, int outputOffset, int nblocks, long[] s)
+	static void shake128_squeezeblocks(byte[] output, int outputOffset, int nblocks, long[] s)
 	{
 	  keccak_squeezeblocks(output, outputOffset, nblocks, s, SHAKE128_RATE);
 	}

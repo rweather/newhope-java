@@ -6,13 +6,16 @@ reference C code from [here](https://cryptojedi.org/crypto/#newhope),
 
 ## Classes
 
-There are two classes in the org.pqcrypto.newhope package:
+There are four classes in the org.pqcrypto.newhope package:
 
- * NewHope - Main API for the Java implementation of NewHope.
+ * NewHope - Main API for the Java implementation of New Hope.
+ * NewHopeTor - Main API for the "torref" variant of New Hope.
  * NewHopeTest - Some test cases to verify the implementation.
+ * NewHopeTorTest - Some test cases to verify the "torref" implementation.
 
-Only the NewHope class needs to be imported into a user application.
-The NewHopeTest class is not needed except for verification.
+Only the NewHope class (and optionally the NewHopeTor class) needs to be
+imported into a user application.  The NewHopeTest and NewHopeTorTest
+classes are not needed except for verification.
 
 ## Using the Java Port
 
